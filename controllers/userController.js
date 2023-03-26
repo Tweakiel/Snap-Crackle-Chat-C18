@@ -1,5 +1,5 @@
 //import models
-const { User, Thought } = require("../models");
+const { User, Thought, Reaction } = require("../models");
 // require object id from mongoose
 const { ObjectId } = require("mongoose").Types;
 
@@ -42,20 +42,20 @@ module.exports = {
   // update user by id
   async updateUser(req, res) {
     try {
-      const updateData = await User.findOneAndUpdate(req.params.id, req.body, {
+      const user = await User.findByIdAndUpdate(req.params.id, req.body, {
         new: true,
-      }); // new: true, return the new updated document
-      res.status(200).json(updateData);
+      });
+      res.json(user);
     } catch (err) {
-      //console.log(err);
-      res.status(500).json(err);
+      console.log(err.message);
+      res.status(500).json(err.message);
     }
   },
 
   // delete user and associated thoughts
   async deleteUser(req, res) {
     try {
-      const deleteData = await User.findOneAndDelete(req.params.id);
+      const deleteData = await User.findByIdAndDelete(req.params.id);
 
       //add check if user exists
       if (!deleteData) {
@@ -74,65 +74,36 @@ module.exports = {
   // add friend to user friend list
   async addFriend(req, res) {
     try {
-      //check for user by id
-      const user = await User.findOne({ _id: req.params.id });
-      //check if friend exists
-      const friend = await User.findOne({ _id: req.params.friendId });
-
-      if (!user) {
-        return res.status(404).json({ message: "No user found with this id!" });
-      }
-
-      if (!friend) {
-        return res
-          .status(404)
-          .json({ message: "No friend found with this id!" });
-      }
-
-      //check if friend is already in friend list
-      if (user.friends.includes(req.params.friendId)) {
-        return res
-          .status(400)
-          .json({ message: "Friend already exists in friend list!" });
-      }
-
-      //add friend to friend list by pushing friend id to friends array
-      user.friends.push(req.params.friend_id);
-      await user.save();
-      res.status(200).json(user);
+      User.findOneAndUpdate(
+        { _id: req.params.userId },
+        { $push: { friends: req.params.friendId } },
+        { new: true }
+      ).then((dbUserData) => {
+        if (!dbUserData) {
+          res.status(404).json({ message: "No user found with this id!" });
+          return;
+        }
+        res.json(dbUserData);
+      });
     } catch (err) {
       res.status(500).json(err);
     }
   },
 
-  // delete friend from user friend list
-  async deleteFriend(req, res) {
+  // remove friend from user friend list
+  async removeFriend(req, res) {
     try {
-      // inverse method of add friend
-      const user = await User.findOne({ _id: req.params.id });
-      const friend = await User.findOne({ _id: req.params.friendId });
-
-      // same checks as add friend
-      if (!user) {
-        return res.status(404).json({ message: "No user found with this id!" });
-      }
-
-      if (!friend) {
-        return res
-          .status(404)
-          .json({ message: "No friend found with this id!" });
-      }
-
-      if (!user.friends.includes(req.params.friendId)) {
-        return res
-          .status(400)
-          .json({ message: "Friend does not exist in friend list!" });
-      }
-
-      // remove friend from friend list by pulling friend id from friends array
-      user.friends.pull(req.params.friend_id);
-      await user.save();
-      res.status(200).json(user);
+      User.findOneAndUpdate(
+        { _id: req.params.userId },
+        { $pull: { friends: req.params.friendId } },
+        { new: true }
+      ).then((dbUserData) => {
+        if (!dbUserData) {
+          res.status(404).json({ message: "No user found with this id!" });
+          return;
+        }
+        res.json(dbUserData);
+      });
     } catch (err) {
       res.status(500).json(err);
     }
