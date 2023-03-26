@@ -56,15 +56,13 @@ module.exports = {
   // delete thought by id
   async deleteThought(req, res) {
     try {
-      // remove thought by its _id value
-      const thoughtData = await Thought.findOneAndDelete(req.params.thoughtId);
-      // remove thought's _id from user's thoughts array field
-      await User.findByIdAndUpdate(thoughtData.userId, {
-        $pull: { thoughts: thoughtData._id },
+      const thought = await Thought.findByIdAndDelete(req.params.thoughtId);
+      await User.findByIdAndUpdate(thought.userId, {
+        $pull: { thoughts: thought._id },
       });
-      res.status(200).json({ message: "Thought deleted successfully!" });
+      res.json({ message: "Thought successfully deleted" });
     } catch (err) {
-      res.status(500).json(err);
+      res.status(500).json(err.message);
     }
   },
 
@@ -91,21 +89,19 @@ module.exports = {
   // remove reaction from thought
   async removeReaction(req, res) {
     try {
-      const { thoughtId, reactionId } = req.params;
-
-      // find the thought with the given ID and remove the reaction with the given ID from its reactions array
-      const updatedThought = await Thought.findByIdAndUpdate(
-          thoughtId,
-          { $pull: { reactions: { reactionId: reactionId } } },
-          { new: true }
+      const thought = await Thought.findOneAndUpdate(
+        { _id: req.params.thoughtId },
+        { $pull: { reactions: { reactionId: req.params.reactionId } } },
+        { new: true }
       );
-
-      res.json({ message: 'Reaction successfully deleted' });
-  } catch (err) {
+      if (!thought) {
+        res.status(404).json({ message: "No thought found with this id!" });
+        return;
+      }
+      res.status(200).json({ message: "Reaction successfully deleted" });
+    } catch (err) {
       console.error(err.message);
       res.status(500).json(err.message);
-  }
-},
+    }
+  },
 };
-
-
